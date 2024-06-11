@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
 const chalk = require("chalk");
 require("dotenv").config();
+const User =  require('../models/User')
 
 const dbUSer = process.env.DB_USER
 const dbPass = process.env.DB_PASSWORD
+
+
 
 const dbconect = () => {
   mongoose
