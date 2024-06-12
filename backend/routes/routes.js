@@ -5,32 +5,11 @@ const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 
 //middlewares
-const authToken = (req, res, next) => {
-  const authHeader = req.headers["authorization"];
-  const token = authHeader && authHeader.split(" ")[1];
+const validationBody = require("../middlewares/validationBody");
+const verifyAuth = require("../middlewares/verifyAuth");
 
-  if (!token) {
-    return res.status(401).json({ msg: "Acesso negado" });
-  }
-
-  try {
-    const secretEnv = process.env.SECRET;
-    // const decoded = jwt.verify(token, secretEnv);
-    next();
-  } catch (error) {
-    return res.status(400).json({ msg: "Token inválido ou inexistente" });
-  }
-};
-
-const returnErrors = (fields) => {
-
-  null
-
-}
 //routes
-
-router.get("/user/:id", authToken, async (req, res) => {
-  //get user by id
+router.get("/user/:id", verifyAuth, async (req, res) => {
   const id = req.params.id;
   const user = await User.findById(id, "-password");
   if (!user) {
@@ -41,34 +20,25 @@ router.get("/user/:id", authToken, async (req, res) => {
   return res.status(201).json(user);
 });
 
-router.post("/auth/register", async (req, res) => {
-  const { name, email, password, confirmpassword } = req.body;
-  const reqbody = Object.keys(req.body);
+router.post("/auth/register", validationBody, async (req, res) => {
+  const { name, email, password } = req.body;
 
-  const result = reqbody.map(fields => {
-    const value = req.body[fields]
-    return  value ? value.length:fields
-})
-
-  console.log(result)
- 
-
-  //check if user exist
   const userExists = await User.findOne({ email: email });
-
-  const salt = await bcrypt.genSalt(12); // gerando cadeia de caracteres
+  if (userExists) {
+    return res.status(400).json({ errocode: "este email ja esta em uso" });
+  }
+  const salt = await bcrypt.genSalt(12);
   const passwordHash = await bcrypt.hash(password, salt);
-  // criando uma senha baseada no bcrypt.genSalt(12)
 
   const user = new User({
     name,
     email,
     password: passwordHash,
   });
-  console.log(passwordHash);
+
   try {
     await user.save();
-    res.status(201).json({ msg: "usuario criado" });
+    res.status(201).json({ msg: "usuário criado" });
   } catch (error) {
     res.status(500).json({ msg: error });
   }
@@ -78,16 +48,16 @@ router.post("/auth/login", async (req, res) => {
   const { email, password } = req.body;
 
   if (!email) {
-    return res.status(422).json({ erro: "Digite o email" });
+    return res.status(400).json({ erro: "Digite o email" });
   }
   if (!password) {
-    return res.status(422).json({ erro: "Digite a senha" });
+    return res.status(400).json({ erro: "Digite a senha" });
   }
 
   //check if user exist
   const user = await User.findOne({ email: email });
   if (!user) {
-    return res.status(422).json({ error: "Este email nao esta cadastrado" });
+    return res.status(400).json({ error: "Este email nao esta cadastrado" });
   }
 
   //check if password macth
@@ -120,18 +90,19 @@ router.post("/auth/login", async (req, res) => {
   }
 });
 
-router.post("/update/user/:id", async (req, res) => {
+router.post("/update/user/:id", verifyAuth, async (req, res) => {
   const id_params = req.params.id;
-
+  const truphy = req.userId === id_params;
+  console.log(truphy);
   try {
     const profile = await User.findOne({ _id: id_params });
-    console.log(profile);
+    return res.status(200).json({msg:profile})
   } catch (error) {
-    return res.status(200).json({ msg: "id não encontrado" });
+    return res.status(401).json({ errocode: "você não tem acesso pra alterar essa conta" });
   }
 });
 
-router.post("/verifytoken", async (req, res) => {
+router.post("/verifytoken", verifyAuth, async (req, res) => {
   const id_params = req.params.id;
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -139,9 +110,9 @@ router.post("/verifytoken", async (req, res) => {
   try {
     const secret = process.env.SECRET;
     const decode = jwt.verify(token, secret);
-    console.log(decode.id);
+    return res.status(200).json({ msg: decode.id });
   } catch (error) {
-    return res.status(200).json({ msg: "id não encontrado" });
+    return res.status(400).json({ msg: "id não encontrado" });
   }
 });
 
