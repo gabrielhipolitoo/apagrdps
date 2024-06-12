@@ -3,10 +3,8 @@ const User = require("../models/User");
 const router = express.Router();
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-router.get("/teste", (req, res) => {
-  return res.json(200);
-});
 
+//middlewares
 const authToken = (req, res, next) => {
   const authHeader = req.headers["authorization"];
   const token = authHeader && authHeader.split(" ")[1];
@@ -16,15 +14,23 @@ const authToken = (req, res, next) => {
   }
 
   try {
-    const secret = process.env.SECRET;
-    const decoded = jwt.verify(token, secret);
+    const secretEnv = process.env.SECRET;
+    // const decoded = jwt.verify(token, secretEnv);
     next();
   } catch (error) {
     return res.status(400).json({ msg: "Token inválido ou inexistente" });
   }
 };
 
+const returnErrors = (fields) => {
+
+  null
+
+}
+//routes
+
 router.get("/user/:id", authToken, async (req, res) => {
+  //get user by id
   const id = req.params.id;
   const user = await User.findById(id, "-password");
   if (!user) {
@@ -37,27 +43,18 @@ router.get("/user/:id", authToken, async (req, res) => {
 
 router.post("/auth/register", async (req, res) => {
   const { name, email, password, confirmpassword } = req.body;
+  const reqbody = Object.keys(req.body);
 
-  if (!name) {
-    return res.status(422).json({ erro: "nome vazio" });
-  }
-  if (!email) {
-    return res.status(422).json({ erro: "email vazio" });
-  }
-  if (!password) {
-    return res.status(422).json({ erro: "password vazio" });
-  }
+  const result = reqbody.map(fields => {
+    const value = req.body[fields]
+    return  value ? value.length:fields
+})
 
-  if (password !== confirmpassword) {
-    return res.status(422).json({ erro: "senhas nao conferem" });
-  }
+  console.log(result)
+ 
 
   //check if user exist
   const userExists = await User.findOne({ email: email });
-
-  if (userExists) {
-    return res.status(422).json({ erro: "este email ja existe" });
-  }
 
   const salt = await bcrypt.genSalt(12); // gerando cadeia de caracteres
   const passwordHash = await bcrypt.hash(password, salt);
