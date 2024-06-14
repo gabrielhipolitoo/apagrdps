@@ -91,14 +91,26 @@ router.post("/auth/login", async (req, res) => {
 });
 
 router.post("/update/user/:id", verifyAuth, async (req, res) => {
-  const id_params = req.params.id;
-  const truphy = req.userId === id_params;
-  console.log(truphy);
+  const id_profile = req.params.id;
+  const userIdToken = req.userId;
+  const truphy = userIdToken === id_profile;
+
   try {
-    const profile = await User.findOne({ _id: id_params });
-    return res.status(200).json({msg:profile})
+    if (!truphy) {
+      return res.status(401).json({
+        msg: "Você não tem permissao para alterar dados deste usuário",
+      });
+    }
+    const profile = await User.findByIdAndUpdate(
+      userIdToken,
+      req.body,
+      { new: true, runValidators: true, context: "query" }
+    );
+    return res.status(400).json({ msg: profile });
   } catch (error) {
-    return res.status(401).json({ errocode: "você não tem acesso pra alterar essa conta" });
+    return res
+      .status(401)
+      .json({ errocode: "houve algum erro, tente novamente mais tarde" });
   }
 });
 
